@@ -1,0 +1,15 @@
+{
+    "python-envs.pythonProjects": [
+        {
+            "path": ".vscode",
+            "envManager": "ms-python.python:venv",
+            "packageManager": "ms-python.python:pip",
+            "workspace": "guis"
+        },
+        {
+            "path": ".",
+            "envManager": "ms-python.python:venv",
+            "packageManager": "ms-python.python:pip"
+        }
+    ]
+}
