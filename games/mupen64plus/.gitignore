@@ -1,0 +1,11 @@
+# Local virtual environment
+.venv/
+venv/
+
+# PyInstaller build artefacts
+build/
+dist/
+__pycache__/
+
+# Keep the checked-in PyInstaller spec (root .gitignore ignores *.spec)
+!mupen64plus_gui.spec
