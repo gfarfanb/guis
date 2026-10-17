@@ -82,6 +82,7 @@ the `start-mupen64plus.bat` environment variables:
 
 | Key                                          | Purpose                                            |
 | -------------------------------------------- | -------------------------------------------------- |
+| `mupen64plus_home`                           | Folder with the `mupen64plus-ui-console` binaries (no default) |
 | `n64_roms_home`                              | Folder scanned for `*.?64` ROMs (no default)       |
 | `gb_gbc_roms_home`                           | Folder scanned for `*.gb*` ROMs (no default)       |
 | `n64_saves_home`                             | N64 save (SRAM) folder (no default)                |
@@ -102,6 +103,27 @@ The `*_home` folders have no default; pick them with the **Browse...** buttons
 in the GUI and they are saved back to `config.toml`.
 Settings are grouped into `[controllers]`, `[graphics]` and `[emulation]`
 tables, with list-of-pairs written as `[[table]]` arrays of tables.
+
+## ROM profiles
+
+`profile.py` replaces the legacy `n64-profiles-win` file that
+`start-mupen64plus.bat` sourced: it generates `profiles.toml` on first run and
+loads per-game defaults for the selected ROM. Profiles are keyed by ROM file
+name **without extension** (the legacy SHA-256 hash keys are dropped), so both
+`Banjo-Kazooie.n64` and `Banjo-Kazooie.z64` match `[games.Banjo-Kazooie]`.
+
+```toml
+[games.Banjo-Kazooie]
+expansion_pak = "Rumble pak"
+joystick = "Keyboard"
+gb_gbc_rom = ""
+video_plugin = "mupen64plus-video-rice"
+emulation_mode = "Dynamic Recompiler"
+```
+
+Each key is optional and empty/unset values fall back to the corresponding
+`config.toml` default. The legacy `_params_game_profiles` (raw extra command
+line arguments) is not carried over yet.
 
 ## Build
 
@@ -138,8 +160,10 @@ The executable is written to:
 games/mupen64plus/
 ├── src/
 │   ├── gui.py               # GUI entry point
-│   └── config.py            # config.toml handling
+│   ├── config.py            # config.toml handling
+│   └── profile.py           # profiles.toml handling (per-ROM defaults)
 ├── config.toml              # generated on first run (git-ignored)
+├── profiles.toml            # generated on first run (git-ignored)
 ├── mupen64plus_gui.spec     # PyInstaller build recipe
 ├── pyproject.toml           # Project metadata and dependencies
 ├── requirements.txt         # Runtime + build dependencies

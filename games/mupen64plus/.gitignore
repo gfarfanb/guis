@@ -209,6 +209,7 @@ tempCodeRunnerFile.py
 
 # Generated at runtime
 config.toml
+profiles.toml
 
 # Ruff stuff:
 .ruff_cache/

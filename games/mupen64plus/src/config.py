@@ -8,6 +8,7 @@ the user.
 
 import copy
 import json
+import re
 import sys
 import tomllib
 from pathlib import Path
@@ -26,6 +27,7 @@ HEADER = [
 
 DEFAULTS = {
     # No defaults: the user must set these folders.
+    'mupen64plus_home': '',
     'n64_roms_home': '',
     'gb_gbc_roms_home': '',
     'n64_saves_home': '',
@@ -71,22 +73,33 @@ DEFAULTS = {
 
 def load_config():
     """Return the configuration, generating ``config.toml`` on first run."""
-    if not CONFIG_PATH.exists():
-        save_config(DEFAULTS)
-        return copy.deepcopy(DEFAULTS)
-
-    with open(CONFIG_PATH, 'rb') as handle:
-        stored = tomllib.load(handle)
-
-    return _merge(DEFAULTS, stored)
+    return load_toml(CONFIG_PATH, DEFAULTS)
 
 
 def save_config(config):
     """Write ``config`` to ``config.toml`` as a proper TOML document."""
-    lines = list(HEADER)
+    save_toml(CONFIG_PATH, config)
+
+
+def load_toml(path, defaults, header=HEADER):
+    """Return ``defaults`` merged with the TOML at ``path``, creating it if missing."""
+    path = Path(path)
+    if not path.exists():
+        save_toml(path, defaults, header)
+        return copy.deepcopy(defaults)
+
+    with open(path, 'rb') as handle:
+        stored = tomllib.load(handle)
+
+    return _merge(defaults, stored)
+
+
+def save_toml(path, config, header=HEADER):
+    """Write ``config`` to ``path`` as a proper TOML document."""
+    lines = list(header)
     lines.append('')
     _write_table([], config, lines)
-    CONFIG_PATH.write_text('\n'.join(lines) + '\n', encoding='utf-8')
+    Path(path).write_text('\n'.join(lines) + '\n', encoding='utf-8')
 
 
 def _merge(defaults, stored):
@@ -123,18 +136,23 @@ def _write_table(path, mapping, lines):
 
     # Plain keys must come before any [table] header at this level.
     for key, value in scalars.items():
-        lines.append('{} = {}'.format(key, _to_toml(value)))
+        lines.append('{} = {}'.format(_key(key), _to_toml(value)))
 
     for key, value in tables.items():
         lines.append('')
-        lines.append('[{}]'.format('.'.join(path + [key])))
+        lines.append('[{}]'.format('.'.join(_key(step) for step in path + [key])))
         _write_table(path + [key], value, lines)
 
     for key, value in arrays.items():
         for item in value:
             lines.append('')
-            lines.append('[[{}]]'.format('.'.join(path + [key])))
+            lines.append('[[{}]]'.format('.'.join(_key(step) for step in path + [key])))
             _write_table(path + [key], item, lines)
+
+
+def _key(key):
+    """Quote a key unless it is a valid bare TOML key."""
+    return key if re.fullmatch(r'[A-Za-z0-9_-]+', key) else json.dumps(key)
 
 
 def _to_toml(value):

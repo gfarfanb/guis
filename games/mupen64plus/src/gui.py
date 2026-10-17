@@ -12,7 +12,8 @@ from glob import glob
 from os.path import basename, isfile, join
 from sys import argv, exit
 
-from PySide6.QtCore import QEvent, Qt
+from PySide6.QtCore import QEvent, Qt, QUrl
+from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import (
     QApplication,
     QComboBox,
@@ -33,7 +34,11 @@ from PySide6.QtWidgets import (
 
 PARAMETER_TYPES = ('None', 'Core', 'Audio-SDL', 'Video-General', 'Video-Rice', 'Input-SDL')
 
+CORE_PARAMETERS_URL = 'https://mupen64plus.org/wiki/index.php?title=Mupen64Plus_Core_Parameters'
+PLUGIN_PARAMETERS_URL = 'https://mupen64plus.org/wiki/index.php?title=Mupen64Plus_Plugin_Parameters'
+
 from config import load_config, save_config
+from profile import Profile
 
 
 def list_home_files(home, pattern):
@@ -123,7 +128,10 @@ class Mupen64PlusForm(QMainWindow):
         super().__init__()
 
         self.config = load_config()
+        self.profile = Profile()
         self.gb_combos = []
+        self.expansion_combos = []
+        self.joystick_combos = []
 
         self.setWindowTitle('Mupen64Plus - GUI')
 
@@ -138,12 +146,17 @@ class Mupen64PlusForm(QMainWindow):
             self.build_emulation_tabs(),
         ), 'Games')
         tabs.addTab(self.build_tab(self.build_folders_group()), 'Settings')
+        tabs.addTab(self.build_tab(self.build_help_group()), 'Help')
         layout.addWidget(tabs)
 
         self.execute_button = QPushButton('Execute')
         layout.addWidget(self.execute_button)
 
         self.setCentralWidget(content)
+
+        self.rom_combo.currentIndexChanged.connect(self.apply_rom_profile)
+        self.apply_rom_profile()
+
         self.resize(560, 660)
 
     @staticmethod
@@ -160,6 +173,7 @@ class Mupen64PlusForm(QMainWindow):
         group = QGroupBox('Folders')
 
         form = QFormLayout(group)
+        form.addRow('Mupen64Plus binaries folder', self.build_folder_row('mupen64plus_home'))
         form.addRow('N64 ROMs folder', self.build_folder_row('n64_roms_home'))
         form.addRow('GB/GBC ROMs folder', self.build_folder_row('gb_gbc_roms_home'))
         form.addRow('N64 saves folder', self.build_folder_row('n64_saves_home'))
@@ -200,6 +214,7 @@ class Mupen64PlusForm(QMainWindow):
         for combo in self.gb_combos:
             self.fill_rom_combo(combo, self.config['gb_gbc_roms_home'], '*.gb*',
                                 '(no GB/GBC ROMs folder set)')
+        self.apply_rom_profile()
 
     @staticmethod
     def fill_rom_combo(combo, home, pattern, missing_label):
@@ -219,6 +234,27 @@ class Mupen64PlusForm(QMainWindow):
         index = combo.findText(str(text))
         if index >= 0:
             combo.setCurrentIndex(index)
+
+    def apply_rom_profile(self):
+        """Load the selected ROM's stored defaults, falling back to config.toml."""
+        options = self.profile.for_rom(self.rom_combo.currentData())
+
+        self.select_combo(
+            self.video_combo,
+            options.get('video_plugin') or self.config['graphics']['video_plugin_default'])
+        self.select_combo(
+            self.emulation_mode_combo,
+            options.get('emulation_mode') or self.config['emulation']['mode_default'])
+        for combo in self.expansion_combos:
+            self.select_combo(
+                combo,
+                options.get('expansion_pak') or self.config['controllers']['expansion_pak_default'])
+        for combo in self.joystick_combos:
+            self.select_combo(
+                combo,
+                options.get('joystick') or self.config['controllers']['joysticks']['default'])
+        for combo in self.gb_combos:
+            self.select_combo(combo, options.get('gb_gbc_rom') or '')
 
     # ######################### N64 game + controllers
     def build_game_group(self):
@@ -275,6 +311,8 @@ class Mupen64PlusForm(QMainWindow):
 
         # Drop the last combo so refresh_rom_combos stops walking it.
         self.gb_combos.pop()
+        self.expansion_combos.pop()
+        self.joystick_combos.pop()
         self.controller_tabs.widget(index).deleteLater()
         self.controller_tabs.removeTab(index)
         self.update_controller_buttons()
@@ -292,6 +330,7 @@ class Mupen64PlusForm(QMainWindow):
         for pak in self.config['controllers']['expansion_paks']:
             expansion_combo.addItem(pak['label'], pak['id'])
         self.select_combo(expansion_combo, self.config['controllers']['expansion_pak_default'])
+        self.expansion_combos.append(expansion_combo)
         form.addRow('Expansion pak', expansion_combo)
 
         joystick_combo = QComboBox()
@@ -302,6 +341,7 @@ class Mupen64PlusForm(QMainWindow):
             joystick_combo.addItem('(no configured joysticks)')
             joystick_combo.setEnabled(False)
         self.select_combo(joystick_combo, self.config['controllers']['joysticks']['default'])
+        self.joystick_combos.append(joystick_combo)
         form.addRow('Configured joystick', joystick_combo)
 
         # Only used by the Transfer pak.
@@ -338,6 +378,19 @@ class Mupen64PlusForm(QMainWindow):
         layout.addWidget(scroll)
 
         return page
+
+    @staticmethod
+    def build_help_group():
+        group = QGroupBox('Core/Plugin parameters')
+        layout = QVBoxLayout(group)
+
+        for label, url in (('Core parameters ref.', CORE_PARAMETERS_URL),
+                           ('Plugin parameters ref.', PLUGIN_PARAMETERS_URL)):
+            button = QPushButton(label)
+            button.clicked.connect(lambda _=False, url=url: QDesktopServices.openUrl(QUrl(url)))
+            layout.addWidget(button)
+
+        return group
 
     def build_display_page(self):
         page = QWidget()
