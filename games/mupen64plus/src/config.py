@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 """Application configuration, stored in ``config.toml`` next to the app.
 
-Replaces the ``start-mupen64plus.bat`` environment variables: the batch
-defaults plus the ``N64_CONFIGURED_JOYSTICK_*`` variables now live in one TOML
-file that is generated on first run.  ``n64_roms_home`` and ``gb_gbc_roms_home``
-have no default and are filled in by the user.
+All settings live in one TOML file that is generated on first run.
+``n64_roms_home`` and ``gb_gbc_roms_home`` have no default and are filled in by
+the user.
 """
 
 import json
@@ -23,7 +22,6 @@ DEFAULTS = {
     # No defaults: the user must set these folders.
     'n64_roms_home': '',
     'gb_gbc_roms_home': '',
-    # start-mupen64plus.bat defaults.
     'controller_names': [
         'Input-SDL-Control1',
         'Input-SDL-Control2',
@@ -50,8 +48,6 @@ DEFAULTS = {
         ['2', 'Dynamic Recompiler'],
     ],
     'emulation_mode_default': 'Dynamic Recompiler',
-    # Condenses N64_CONFIGURED_JOYSTICK_LENGTH / N64_JOYSTICK_NAMES /
-    # N64_CONFIGURED_JOYSTICK_DEFAULT (the length is len(names)).
     'configured_joystick_names': ['Keyboard'],
     'configured_joystick_default': 'Keyboard',
 }
