@@ -1,7 +1,10 @@
 # Default Mupen64Plus GUI ROM profiles.
-# Copied into profiles.toml on first run; add per-ROM Core/plugin parameters here.
-# One [[games.<name>]] entry per ROM file name (without extension) per parameter.
-# Only Core/plugin parameter types (default_config.toml [parameters].types) are kept.
+# Copied into profiles.toml on first run.
+#
+# [options.<name>] holds per-ROM launch options; empty/missing ones fall back to
+# config.toml. One [[games.<name>]] entry per ROM file name (without extension)
+# per Core/plugin parameter; only types in default_config.toml
+# [parameters].types are kept.
 #
 # Example (passes --set Core[OnScreenDisplay]=true):
 # [[games."Super Mario 64"]]
@@ -9,32 +12,34 @@
 # name = "OnScreenDisplay"
 # value = "true"
 
-[games]
+[options]
 
-[games.Banjo-Kazooie]
+[options.Banjo-Kazooie]
 expansion_pak = "Rumble pak"
 joystick = "Keyboard"
 gb_gbc_rom = ""
 video_plugin = "mupen64plus-video-rice"
 emulation_mode = "Dynamic Recompiler"
 
-[games.Banjo-Tooie]
+[options.Banjo-Tooie]
 expansion_pak = "Rumble pak"
 joystick = "Keyboard"
 gb_gbc_rom = ""
 video_plugin = "mupen64plus-video-rice"
 emulation_mode = "Pure Interpreter"
 
-[games."Pokemon Stadium"]
+[options."Pokemon Stadium"]
 expansion_pak = "Transfer pak"
 joystick = "Keyboard"
 gb_gbc_rom = "Pokemon Blue Version.gb"
 video_plugin = "mupen64plus-video-glide64mk2"
 emulation_mode = "Dynamic Recompiler"
 
-[games."Pokemon Stadium 2"]
+[options."Pokemon Stadium 2"]
 expansion_pak = "Transfer pak"
 joystick = "Keyboard"
 gb_gbc_rom = "Pokemon Crystal Version.gbc"
 video_plugin = "mupen64plus-video-glide64mk2"
 emulation_mode = "Dynamic Recompiler"
+
+[games]

@@ -77,9 +77,10 @@ def _merge(defaults, stored):
     for key, default in defaults.items():
         if key not in stored:
             merged[key] = copy.deepcopy(default)
-        elif isinstance(default, dict):
+        elif isinstance(default, dict) and isinstance(stored[key], dict):
             merged[key] = _merge(default, stored[key])
         else:
+            # Shapes differ (e.g. legacy profile defaults vs new lists): keep stored.
             merged[key] = stored[key]
 
     for key, value in stored.items():

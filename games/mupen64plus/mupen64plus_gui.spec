@@ -17,7 +17,7 @@ a = Analysis(
         ('src/default_config.toml', '.'),
         ('src/default_profiles.toml', '.'),
     ],
-    hiddenimports=['config', 'profile'],
+    hiddenimports=['config', 'profile', 'mupen'],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],

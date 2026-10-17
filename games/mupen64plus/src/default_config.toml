@@ -5,6 +5,7 @@
 mupen64plus_home = ""
 n64_roms_home = ""
 gb_gbc_roms_home = ""
+gb_gbc_saves_home = ""
 n64_saves_home = ""
 n64_screenshots_home = ""
 

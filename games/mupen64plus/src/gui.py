@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 """PySide6 form with the Mupen64Plus launch options.
 
-UI-only skeleton: nothing is wired up, no command line is assembled and no
-emulator is launched.
+**Execute** collects the Games-tab widgets into a ``Mupen64Plus`` command
+(``mupen.py``) and launches ``mupen64plus-ui-console``.
 
 Configuration (defaults, ROM folders, joysticks) lives in ``config.toml`` and
 is handled by ``config.py``.
 """
 
+import subprocess
 from glob import glob
 from os.path import basename, isfile, join
 from sys import argv, exit
@@ -25,6 +26,7 @@ from PySide6.QtWidgets import (
     QLabel,
     QLineEdit,
     QMainWindow,
+    QMessageBox,
     QPushButton,
     QScrollArea,
     QTabWidget,
@@ -38,6 +40,7 @@ CORE_PARAMETERS_URL = 'https://mupen64plus.org/wiki/index.php?title=Mupen64Plus_
 PLUGIN_PARAMETERS_URL = 'https://mupen64plus.org/wiki/index.php?title=Mupen64Plus_Plugin_Parameters'
 
 from config import load_config, save_config
+from mupen import Mupen64Plus
 from profile import Profile
 
 
@@ -158,7 +161,7 @@ class Mupen64PlusForm(QMainWindow):
         self.config = load_config()
         self.profile = Profile()
         self.current_rom = None
-        self.gb_combos = []
+        self.controller_rows = []
 
         self.setWindowTitle('Mupen64Plus - GUI')
 
@@ -177,6 +180,7 @@ class Mupen64PlusForm(QMainWindow):
         layout.addWidget(tabs)
 
         self.execute_button = QPushButton('Execute')
+        self.execute_button.clicked.connect(self.execute)
         layout.addWidget(self.execute_button)
 
         self.setCentralWidget(content)
@@ -203,6 +207,7 @@ class Mupen64PlusForm(QMainWindow):
         form.addRow('Mupen64Plus binaries folder', self.build_folder_row('mupen64plus_home'))
         form.addRow('N64 ROMs folder', self.build_folder_row('n64_roms_home'))
         form.addRow('GB/GBC ROMs folder', self.build_folder_row('gb_gbc_roms_home'))
+        form.addRow('GB/GBC saves folder', self.build_folder_row('gb_gbc_saves_home'))
         form.addRow('N64 saves folder', self.build_folder_row('n64_saves_home'))
         form.addRow('N64 screenshots folder', self.build_folder_row('n64_screenshots_home'))
 
@@ -238,10 +243,12 @@ class Mupen64PlusForm(QMainWindow):
     def refresh_rom_combos(self):
         self.fill_rom_combo(self.rom_combo, self.config['n64_roms_home'], '*.?64',
                             '(no N64 ROMs folder set)')
-        for combo in self.gb_combos:
-            self.fill_rom_combo(combo, self.config['gb_gbc_roms_home'], '*.gb*',
+        for row in self.controller_rows:
+            self.fill_rom_combo(row['gb'], self.config['gb_gbc_roms_home'], '*.gb*',
                                 '(no GB/GBC ROMs folder set)')
         self.apply_rom_parameters()
+        # Refilling combos cleared their selection; restore the current ROM's options.
+        self.apply_rom_options(self.current_rom)
 
     @staticmethod
     def fill_rom_combo(combo, home, pattern, missing_label):
@@ -262,6 +269,12 @@ class Mupen64PlusForm(QMainWindow):
         if index >= 0:
             combo.setCurrentIndex(index)
 
+    @staticmethod
+    def clear_combo(combo):
+        """Deselect the current item, keeping a disabled placeholder visible."""
+        if combo.isEnabled():
+            combo.setCurrentIndex(-1)
+
     def apply_rom_parameters(self):
         """Save the previous ROM's parameters, then load the selected ROM's own."""
         rom = self.rom_combo.currentData()
@@ -270,6 +283,25 @@ class Mupen64PlusForm(QMainWindow):
         self.save_rom_parameters()
         self.current_rom = rom
         self.parameter_table.set_parameters(self.profile.for_rom(rom))
+        self.apply_rom_options(rom)
+
+    def apply_rom_options(self, rom):
+        """Reset every field to its default, then apply the ROM's options."""
+        options = self.profile.options_for_rom(rom)
+        controllers = self.config['controllers']
+        self.select_combo(self.video_combo, self.config['graphics']['video_plugin_default'])
+        self.select_combo(self.emulation_mode_combo, self.config['emulation']['mode_default'])
+        for row in self.controller_rows:
+            self.select_combo(row['expansion'], controllers['expansion_pak_default'])
+            self.select_combo(row['joystick'], controllers['joysticks']['default'])
+            self.clear_combo(row['gb'])
+
+        self.select_combo(self.video_combo, options.get('video_plugin') or '')
+        self.select_combo(self.emulation_mode_combo, options.get('emulation_mode') or '')
+        for row in self.controller_rows:
+            self.select_combo(row['expansion'], options.get('expansion_pak') or '')
+            self.select_combo(row['joystick'], options.get('joystick') or '')
+            self.select_combo(row['gb'], options.get('gb_gbc_rom') or '')
 
     def save_rom_parameters(self):
         if self.current_rom:
@@ -278,6 +310,35 @@ class Mupen64PlusForm(QMainWindow):
     def closeEvent(self, event):
         self.save_rom_parameters()
         super().closeEvent(event)
+
+    def build_command(self):
+        """Collect the Games-tab widgets into a :class:`Mupen64Plus` command."""
+        mupen = Mupen64Plus(self.config)
+        mupen.rom = self.rom_combo.currentData() or ''
+        mupen.video_plugin = self.video_combo.currentText()
+        mupen.resolution = self.resolution_edit.text().strip()
+        mupen.emulation_mode = self.emulation_mode_combo.currentData() or ''
+        mupen.parameters = self.parameter_table.parameters()
+        mupen.controllers = [
+            {
+                'expansion_pak': row['expansion'].currentData(),
+                'joystick': row['joystick'].currentText(),
+                'gb_rom': row['gb'].currentData() or '',
+            }
+            for row in self.controller_rows
+        ]
+        return mupen
+
+    def execute(self):
+        self.save_rom_parameters()
+        mupen = self.build_command()
+        if not mupen.rom:
+            QMessageBox.warning(self, 'Execute', 'No ROM file selected')
+            return
+        try:
+            subprocess.Popen(mupen.command(), cwd=mupen.working_dir())
+        except OSError as error:
+            QMessageBox.warning(self, 'Execute', str(error))
 
     # ######################### N64 game + controllers
     def build_game_group(self):
@@ -332,8 +393,8 @@ class Mupen64PlusForm(QMainWindow):
         if index < 1:  # the first controller always stays
             return
 
-        # Drop the last combo so refresh_rom_combos stops walking it.
-        self.gb_combos.pop()
+        # Drop the last row so refresh_rom_combos stops walking it.
+        self.controller_rows.pop()
         self.controller_tabs.widget(index).deleteLater()
         self.controller_tabs.removeTab(index)
         self.update_controller_buttons()
@@ -365,7 +426,6 @@ class Mupen64PlusForm(QMainWindow):
 
         # Only used by the Transfer pak.
         gb_combo = QComboBox()
-        self.gb_combos.append(gb_combo)
         self.fill_rom_combo(gb_combo, self.config['gb_gbc_roms_home'], '*.gb*',
                             '(no GB/GBC ROMs folder set)')
         form.addRow('GB/GBC game', gb_combo)
@@ -373,6 +433,12 @@ class Mupen64PlusForm(QMainWindow):
         hint = QLabel('GB/GBC game is only used with the Transfer pak.')
         hint.setEnabled(False)
         form.addRow(hint)
+
+        self.controller_rows.append({
+            'expansion': expansion_combo,
+            'joystick': joystick_combo,
+            'gb': gb_combo,
+        })
 
         return tab
 

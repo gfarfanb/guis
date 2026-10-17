@@ -30,4 +30,4 @@ mupen64plus-gui = "gui:main"
 
 [tool.setuptools]
 package-dir = { "" = "src" }
-py-modules = ["gui", "config", "profile"]
+py-modules = ["gui", "config", "profile", "mupen"]

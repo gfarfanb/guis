@@ -15,8 +15,9 @@ with an appropriate widget:
 | `resolution>`          | Display resolution line edit  |
 | `emumode-index>`       | Emulation mode combo box      |
 
-> **Status:** UI-only skeleton. The widgets are not wired to a command line and
-> no emulator is launched yet.
+> **Status:** **Execute** builds the `mupen64plus-ui-console` command from the
+> Games tab (`mupen.py`, mirroring the archived `start-mupen64plus.bat`) and
+> launches it.
 
 ## Requirements
 
@@ -87,6 +88,7 @@ environment variables:
 | `mupen64plus_home`                           | Folder with the `mupen64plus-ui-console` binaries (no default) |
 | `n64_roms_home`                              | Folder scanned for `*.?64` ROMs (no default)       |
 | `gb_gbc_roms_home`                           | Folder scanned for `*.gb*` ROMs (no default)       |
+| `gb_gbc_saves_home`                          | GB/GBC transfer-pak save folder (no default)       |
 | `n64_saves_home`                             | N64 save (SRAM) folder (no default)                |
 | `n64_screenshots_home`                       | N64 screenshot folder (no default)                 |
 | `controllers.names`                          | `--set` controller names                           |
@@ -110,22 +112,33 @@ tables, with list-of-pairs written as `[[table]]` arrays of tables.
 ## ROM profiles
 
 `profile.py` generates `profiles.toml` on first run, seeded from the committed
-`src/default_profiles.toml`, and loads per-game **Core/Plugin parameters** for
-the selected ROM, so they can be reused in the *Core/Plugin parameters* widget. Profiles are keyed by ROM file name **without
-extension**, so both `Banjo-Kazooie.n64` and `Banjo-Kazooie.z64` match
-`games.Banjo-Kazooie`.
+`src/default_profiles.toml`, and stores per-game values for the selected ROM.
+Profiles are keyed by ROM file name **without extension**, so both
+`Banjo-Kazooie.n64` and `Banjo-Kazooie.z64` match `Banjo-Kazooie`.
+
+Two kinds of entries are supported:
+
+- `[options.<name>]` sets that ROM's launch options (video plugin, emulation
+  mode, expansion pak, joystick, GB/GBC ROM). Missing or empty keys fall back to
+  the `config.toml` defaults.
+- `[[games.<name>]]` adds a *Core/Plugin parameters* row.
 
 ```toml
-[[games.Banjo-Kazooie]]
+[options."Pokemon Stadium 2"]
+expansion_pak = "Transfer pak"
+gb_gbc_rom = "Pokemon Crystal Version.gbc"
+
+[[games."Pokemon Stadium 2"]]
 type = "Core"
 name = "DisableExtraMem"
 value = "True"
 ```
 
-Each game holds only `type`/`name`/`value` rows; the `type` must be one of the
+A parameter row needs `type`/`name`/`value`; the `type` must be one of the
 `parameters.types` in `config.toml`, otherwise the row is ignored. Selecting a
-ROM loads its rows into the *Core/Plugin parameters* widget, and editing the
-rows saves them back to the ROM's profile (on ROM change or window close).
+ROM applies its options to the widgets and loads its rows into the *Core/Plugin
+parameters* widget; editing the rows saves them back (on ROM change or window
+close).
 
 ## Build
 
@@ -161,7 +174,8 @@ The executable is written to:
 ```
 games/mupen64plus/
 ├── src/
-│   ├── gui.py               # GUI entry point
+│   ├── gui.py               # GUI entry point (Execute button)
+│   ├── mupen.py             # builds the mupen64plus-ui-console command
 │   ├── config.py            # config.toml handling
 │   ├── profile.py           # profiles.toml handling (per-ROM parameters)
 │   ├── default_config.toml  # committed default config
