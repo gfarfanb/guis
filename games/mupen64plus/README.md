@@ -77,8 +77,10 @@ mupen64plus-gui
 ## Configuration
 
 All settings live in a `config.toml` file that `config.py` generates on first
-run, next to the script (`src/`) or next to the built executable. It replaces
-the `start-mupen64plus.bat` environment variables:
+run, next to the script (`src/`) or next to the built executable. Its initial
+contents come from the committed `src/default_config.toml`, which is where the
+shipped defaults are maintained. It replaces the `start-mupen64plus.bat`
+environment variables:
 
 | Key                                          | Purpose                                            |
 | -------------------------------------------- | -------------------------------------------------- |
@@ -98,6 +100,7 @@ the `start-mupen64plus.bat` environment variables:
 | `graphics.resolution`                        | Default display resolution                         |
 | `emulation.modes` (`[[...]]`)                | `id`, `label` entries                              |
 | `emulation.mode_default`                     | Preselected emulation mode label                   |
+| `parameters.types`                           | Type names accepted in ROM profiles and the parameters widget |
 
 The `*_home` folders have no default; pick them with the **Browse...** buttons
 in the GUI and they are saved back to `config.toml`.
@@ -106,24 +109,23 @@ tables, with list-of-pairs written as `[[table]]` arrays of tables.
 
 ## ROM profiles
 
-`profile.py` replaces the legacy `n64-profiles-win` file that
-`start-mupen64plus.bat` sourced: it generates `profiles.toml` on first run and
-loads per-game defaults for the selected ROM. Profiles are keyed by ROM file
-name **without extension** (the legacy SHA-256 hash keys are dropped), so both
-`Banjo-Kazooie.n64` and `Banjo-Kazooie.z64` match `[games.Banjo-Kazooie]`.
+`profile.py` generates `profiles.toml` on first run, seeded from the committed
+`src/default_profiles.toml`, and loads per-game **Core/Plugin parameters** for
+the selected ROM, so they can be reused in the *Core/Plugin parameters* widget. Profiles are keyed by ROM file name **without
+extension**, so both `Banjo-Kazooie.n64` and `Banjo-Kazooie.z64` match
+`games.Banjo-Kazooie`.
 
 ```toml
-[games.Banjo-Kazooie]
-expansion_pak = "Rumble pak"
-joystick = "Keyboard"
-gb_gbc_rom = ""
-video_plugin = "mupen64plus-video-rice"
-emulation_mode = "Dynamic Recompiler"
+[[games.Banjo-Kazooie]]
+type = "Core"
+name = "DisableExtraMem"
+value = "True"
 ```
 
-Each key is optional and empty/unset values fall back to the corresponding
-`config.toml` default. The legacy `_params_game_profiles` (raw extra command
-line arguments) is not carried over yet.
+Each game holds only `type`/`name`/`value` rows; the `type` must be one of the
+`parameters.types` in `config.toml`, otherwise the row is ignored. Selecting a
+ROM loads its rows into the *Core/Plugin parameters* widget, and editing the
+rows saves them back to the ROM's profile (on ROM change or window close).
 
 ## Build
 
@@ -161,7 +163,9 @@ games/mupen64plus/
 ├── src/
 │   ├── gui.py               # GUI entry point
 │   ├── config.py            # config.toml handling
-│   └── profile.py           # profiles.toml handling (per-ROM defaults)
+│   ├── profile.py           # profiles.toml handling (per-ROM parameters)
+│   ├── default_config.toml  # committed default config
+│   └── default_profiles.toml # committed default ROM profiles
 ├── config.toml              # generated on first run (git-ignored)
 ├── profiles.toml            # generated on first run (git-ignored)
 ├── mupen64plus_gui.spec     # PyInstaller build recipe

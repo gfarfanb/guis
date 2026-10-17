@@ -13,7 +13,10 @@ a = Analysis(
     ['src/gui.py'],
     pathex=['src'],
     binaries=[],
-    datas=[],
+    datas=[
+        ('src/default_config.toml', '.'),
+        ('src/default_profiles.toml', '.'),
+    ],
     hiddenimports=['config', 'profile'],
     hookspath=[],
     hooksconfig={},

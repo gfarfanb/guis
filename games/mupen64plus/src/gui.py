@@ -32,7 +32,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-PARAMETER_TYPES = ('None', 'Core', 'Audio-SDL', 'Video-General', 'Video-Rice', 'Input-SDL')
+PARAMETER_NONE = 'None'
 
 CORE_PARAMETERS_URL = 'https://mupen64plus.org/wiki/index.php?title=Mupen64Plus_Core_Parameters'
 PLUGIN_PARAMETERS_URL = 'https://mupen64plus.org/wiki/index.php?title=Mupen64Plus_Plugin_Parameters'
@@ -54,9 +54,10 @@ def list_home_files(home, pattern):
 class ParameterTable(QWidget):
     """Type/Name/Value rows; Enter anywhere or Tab past the last field adds a row."""
 
-    def __init__(self):
+    def __init__(self, types):
         super().__init__()
 
+        self.types = [PARAMETER_NONE] + list(types)
         self.rows = []
         self.grid = QGridLayout(self)
         self.grid.setContentsMargins(0, 0, 0, 0)
@@ -67,7 +68,7 @@ class ParameterTable(QWidget):
 
         self.add_row()
 
-    def add_row(self):
+    def add_row(self, parameter=None):
         entry = {
             'remove': QPushButton('\u2715'),
             'type': QComboBox(),
@@ -77,7 +78,11 @@ class ParameterTable(QWidget):
         entry['remove'].setFixedWidth(28)
         entry['remove'].setToolTip('Delete row')
         entry['remove'].clicked.connect(lambda: self.remove_row(entry))
-        entry['type'].addItems(PARAMETER_TYPES)
+        entry['type'].addItems(self.types)
+        if parameter:
+            entry['type'].setCurrentText(parameter['type'])
+            entry['name'].setText(parameter['name'])
+            entry['value'].setText(parameter.get('value', ''))
         for widget in (entry['type'], entry['name'], entry['value']):
             widget.installEventFilter(self)
 
@@ -87,15 +92,38 @@ class ParameterTable(QWidget):
         return entry
 
     def remove_row(self, entry):
-        for widget in entry.values():
-            widget.setParent(None)
-            widget.deleteLater()
-        self.rows.remove(entry)
+        self.drop_row(entry)
 
         if self.rows:
             self.relayout()
         else:
             self.add_row()
+
+    def drop_row(self, entry):
+        for widget in entry.values():
+            widget.setParent(None)
+            widget.deleteLater()
+        self.rows.remove(entry)
+
+    def set_parameters(self, parameters):
+        """Replace all rows with ``parameters`` (type/name/value dicts)."""
+        for entry in list(self.rows):
+            self.drop_row(entry)
+        for parameter in parameters:
+            self.add_row(parameter)
+        if not self.rows:
+            self.add_row()
+        self.relayout()
+
+    def parameters(self):
+        """Return the completed rows as type/name/value dicts."""
+        completed = []
+        for entry in self.rows:
+            name = entry['name'].text().strip()
+            ptype = entry['type'].currentText()
+            if name and ptype != PARAMETER_NONE:
+                completed.append({'type': ptype, 'name': name, 'value': entry['value'].text()})
+        return completed
 
     def relayout(self):
         for row, entry in enumerate(self.rows, start=1):
@@ -129,9 +157,8 @@ class Mupen64PlusForm(QMainWindow):
 
         self.config = load_config()
         self.profile = Profile()
+        self.current_rom = None
         self.gb_combos = []
-        self.expansion_combos = []
-        self.joystick_combos = []
 
         self.setWindowTitle('Mupen64Plus - GUI')
 
@@ -154,8 +181,8 @@ class Mupen64PlusForm(QMainWindow):
 
         self.setCentralWidget(content)
 
-        self.rom_combo.currentIndexChanged.connect(self.apply_rom_profile)
-        self.apply_rom_profile()
+        self.rom_combo.currentIndexChanged.connect(self.apply_rom_parameters)
+        self.apply_rom_parameters()
 
         self.resize(560, 660)
 
@@ -214,7 +241,7 @@ class Mupen64PlusForm(QMainWindow):
         for combo in self.gb_combos:
             self.fill_rom_combo(combo, self.config['gb_gbc_roms_home'], '*.gb*',
                                 '(no GB/GBC ROMs folder set)')
-        self.apply_rom_profile()
+        self.apply_rom_parameters()
 
     @staticmethod
     def fill_rom_combo(combo, home, pattern, missing_label):
@@ -235,26 +262,22 @@ class Mupen64PlusForm(QMainWindow):
         if index >= 0:
             combo.setCurrentIndex(index)
 
-    def apply_rom_profile(self):
-        """Load the selected ROM's stored defaults, falling back to config.toml."""
-        options = self.profile.for_rom(self.rom_combo.currentData())
+    def apply_rom_parameters(self):
+        """Save the previous ROM's parameters, then load the selected ROM's own."""
+        rom = self.rom_combo.currentData()
+        if rom == self.current_rom:
+            return
+        self.save_rom_parameters()
+        self.current_rom = rom
+        self.parameter_table.set_parameters(self.profile.for_rom(rom))
 
-        self.select_combo(
-            self.video_combo,
-            options.get('video_plugin') or self.config['graphics']['video_plugin_default'])
-        self.select_combo(
-            self.emulation_mode_combo,
-            options.get('emulation_mode') or self.config['emulation']['mode_default'])
-        for combo in self.expansion_combos:
-            self.select_combo(
-                combo,
-                options.get('expansion_pak') or self.config['controllers']['expansion_pak_default'])
-        for combo in self.joystick_combos:
-            self.select_combo(
-                combo,
-                options.get('joystick') or self.config['controllers']['joysticks']['default'])
-        for combo in self.gb_combos:
-            self.select_combo(combo, options.get('gb_gbc_rom') or '')
+    def save_rom_parameters(self):
+        if self.current_rom:
+            self.profile.set_rom(self.current_rom, self.parameter_table.parameters())
+
+    def closeEvent(self, event):
+        self.save_rom_parameters()
+        super().closeEvent(event)
 
     # ######################### N64 game + controllers
     def build_game_group(self):
@@ -311,8 +334,6 @@ class Mupen64PlusForm(QMainWindow):
 
         # Drop the last combo so refresh_rom_combos stops walking it.
         self.gb_combos.pop()
-        self.expansion_combos.pop()
-        self.joystick_combos.pop()
         self.controller_tabs.widget(index).deleteLater()
         self.controller_tabs.removeTab(index)
         self.update_controller_buttons()
@@ -330,7 +351,6 @@ class Mupen64PlusForm(QMainWindow):
         for pak in self.config['controllers']['expansion_paks']:
             expansion_combo.addItem(pak['label'], pak['id'])
         self.select_combo(expansion_combo, self.config['controllers']['expansion_pak_default'])
-        self.expansion_combos.append(expansion_combo)
         form.addRow('Expansion pak', expansion_combo)
 
         joystick_combo = QComboBox()
@@ -341,7 +361,6 @@ class Mupen64PlusForm(QMainWindow):
             joystick_combo.addItem('(no configured joysticks)')
             joystick_combo.setEnabled(False)
         self.select_combo(joystick_combo, self.config['controllers']['joysticks']['default'])
-        self.joystick_combos.append(joystick_combo)
         form.addRow('Configured joystick', joystick_combo)
 
         # Only used by the Transfer pak.
@@ -372,7 +391,8 @@ class Mupen64PlusForm(QMainWindow):
 
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
-        scroll.setWidget(ParameterTable())
+        self.parameter_table = ParameterTable(self.config['parameters']['types'])
+        scroll.setWidget(self.parameter_table)
         # Keep the page a constant size; extra rows scroll instead of growing the window.
         scroll.setFixedHeight(90)
         layout.addWidget(scroll)

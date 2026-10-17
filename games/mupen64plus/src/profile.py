@@ -1,79 +1,98 @@
 #!/usr/bin/env python3
-"""Per-ROM launch defaults, stored in ``profiles.toml`` next to ``config.toml``.
+"""Per-ROM Core/plugin parameters, stored in ``profiles.toml`` next to ``config.toml``.
 
-Replaces the legacy ``n64-profiles-win`` file sourced by
-``start-mupen64plus.bat``: the same per-game options are keyed by ROM file name
-(without extension) instead of the legacy SHA-256 hash, so a rename still
-matches.
+One ``[[games.<name>]]`` entry per ROM file name (without extension); each entry
+is a ``type``/``name``/``value`` parameter that loads into the GUI's
+*Core/Plugin parameters* widget. Only the types declared in ``config.toml``
+``[parameters].types`` are kept.
 """
 
-import tomllib
 from pathlib import Path
 
-from config import CONFIG_DIR, load_toml
+from config import (
+    CONFIG_DIR,
+    DATA_DIR,
+    load_config,
+    load_defaults,
+    load_toml,
+    save_toml,
+)
 
 PROFILES_PATH = CONFIG_DIR / 'profiles.toml'
+DEFAULT_PROFILES_PATH = DATA_DIR / 'default_profiles.toml'
 
 HEADER = [
-    '# Mupen64Plus GUI ROM profiles - generated from the legacy n64-profiles-win.',
-    '# One [games.<name>] table per ROM file name (without extension).',
-    '# Empty values fall back to the matching config.toml default.',
+    '# Mupen64Plus GUI ROM profiles.',
+    '# One [[games.<name>]] entry per ROM file name (without extension) per parameter.',
+    '# Only Core/plugin parameter types (config.toml [parameters].types) are kept.',
+    '#',
+    '# Example (passes --set Core[OnScreenDisplay]=true):',
+    '# [[games."Super Mario 64"]]',
+    '# type = "Core"',
+    '# name = "OnScreenDisplay"',
+    '# value = "true"',
 ]
 
-DEFAULTS = {
-    'games': {
-        'Banjo-Kazooie': {
-            'expansion_pak': 'Rumble pak',
-            'joystick': 'Keyboard',
-            'gb_gbc_rom': '',
-            'video_plugin': 'mupen64plus-video-rice',
-            'emulation_mode': 'Dynamic Recompiler',
-        },
-        'Banjo-Tooie': {
-            'expansion_pak': 'Rumble pak',
-            'joystick': 'Keyboard',
-            'gb_gbc_rom': '',
-            'video_plugin': 'mupen64plus-video-rice',
-            'emulation_mode': 'Pure Interpreter',
-        },
-        'Pokemon Stadium': {
-            'expansion_pak': 'Transfer pak',
-            'joystick': 'Keyboard',
-            'gb_gbc_rom': 'Pokemon Blue Version.gb',
-            'video_plugin': 'mupen64plus-video-glide64mk2',
-            'emulation_mode': 'Dynamic Recompiler',
-        },
-        'Pokemon Stadium 2': {
-            'expansion_pak': 'Transfer pak',
-            'joystick': 'Keyboard',
-            'gb_gbc_rom': 'Pokemon Crystal Version.gbc',
-            'video_plugin': 'mupen64plus-video-glide64mk2',
-            'emulation_mode': 'Dynamic Recompiler',
-        },
-    },
-}
+# Committed defaults, maintained in default_profiles.toml.
+DEFAULTS = load_defaults(DEFAULT_PROFILES_PATH)
 
 
 class Profile:
-    """Provide the stored launch defaults for a ROM file."""
+    """Store the Core/plugin parameters for each ROM file."""
 
     def __init__(self, path=PROFILES_PATH):
         self.path = Path(path)
-        self.games = load_toml(self.path, DEFAULTS, HEADER)['games']
+        self.types = load_config()['parameters']['types']
+        # Drop anything that is not a parameter list (old profile schema).
+        self.games = {
+            name: entries
+            for name, entries in load_toml(self.path, DEFAULTS, HEADER)['games'].items()
+            if isinstance(entries, list)
+        }
 
     def for_rom(self, rom_path):
-        """Return the option table for ``rom_path``, or an empty dict."""
-        return self.games.get(Path(rom_path).stem, {}) if rom_path else {}
+        """Return the valid parameter list for ``rom_path``."""
+        if not rom_path:
+            return []
+        return [
+            {'type': entry['type'], 'name': entry['name'], 'value': entry.get('value', '')}
+            for entry in self.games.get(Path(rom_path).stem, [])
+            if entry.get('type') in self.types and entry.get('name')
+        ]
+
+    def set_rom(self, rom_path, parameters):
+        """Store ``parameters`` (type/name/value dicts) for ``rom_path`` and save."""
+        if not rom_path:
+            return
+        name = Path(rom_path).stem
+        if parameters:
+            self.games[name] = parameters
+        else:
+            self.games.pop(name, None)
+        save_toml(self.path, {'games': self.games}, HEADER)
 
 
 if __name__ == '__main__':
-    # Self-check: defaults resolve for the legacy ROM names and round-trip.
-    profile = Profile()
-    with open(profile.path, 'rb') as handle:
-        assert tomllib.load(handle) == DEFAULTS
-    assert profile.for_rom('C:/roms/Banjo-Kazooie.z64')['expansion_pak'] == 'Rumble pak'
-    assert profile.for_rom('C:/roms/Pokemon Stadium.n64')['gb_gbc_rom'] == 'Pokemon Blue Version.gb'
-    assert profile.for_rom('C:/roms/Unknown.n64') == {}
-    assert profile.for_rom(None) == {}
-    assert profile.games == DEFAULTS['games']
+    # Self-check: parameters round-trip, rename by extension still matches, and
+    # non-Core/plugin entries are dropped.
+    import tempfile
+
+    path = Path(tempfile.mkdtemp()) / 'profiles.toml'
+    profile = Profile(path)
+    assert profile.for_rom('C:/roms/Unknown.n64') == []
+    assert profile.for_rom(None) == []
+
+    params = [{'type': 'Core', 'name': 'DisableExtraMem', 'value': 'True'}]
+    profile.set_rom('C:/roms/Banjo-Kazooie.z64', params)
+    assert Profile(path).for_rom('C:/roms/Banjo-Kazooie.n64') == params
+
+    save_toml(path, {'games': {'Bad': [
+        {'type': 'None', 'name': 'x', 'value': ''},
+        {'type': 'Bogus', 'name': 'y', 'value': ''},
+        {'type': 'Core', 'name': '', 'value': ''},
+    ]}}, HEADER)
+    assert Profile(path).for_rom('Bad') == []
+
+    profile.set_rom('C:/roms/Banjo-Kazooie.z64', [])
+    assert Profile(path).for_rom('C:/roms/Banjo-Kazooie.n64') == []
     print('profiles.toml round-trips correctly')

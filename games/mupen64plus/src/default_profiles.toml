@@ -1,0 +1,40 @@
+# Default Mupen64Plus GUI ROM profiles.
+# Copied into profiles.toml on first run; add per-ROM Core/plugin parameters here.
+# One [[games.<name>]] entry per ROM file name (without extension) per parameter.
+# Only Core/plugin parameter types (default_config.toml [parameters].types) are kept.
+#
+# Example (passes --set Core[OnScreenDisplay]=true):
+# [[games."Super Mario 64"]]
+# type = "Core"
+# name = "OnScreenDisplay"
+# value = "true"
+
+[games]
+
+[games.Banjo-Kazooie]
+expansion_pak = "Rumble pak"
+joystick = "Keyboard"
+gb_gbc_rom = ""
+video_plugin = "mupen64plus-video-rice"
+emulation_mode = "Dynamic Recompiler"
+
+[games.Banjo-Tooie]
+expansion_pak = "Rumble pak"
+joystick = "Keyboard"
+gb_gbc_rom = ""
+video_plugin = "mupen64plus-video-rice"
+emulation_mode = "Pure Interpreter"
+
+[games."Pokemon Stadium"]
+expansion_pak = "Transfer pak"
+joystick = "Keyboard"
+gb_gbc_rom = "Pokemon Blue Version.gb"
+video_plugin = "mupen64plus-video-glide64mk2"
+emulation_mode = "Dynamic Recompiler"
+
+[games."Pokemon Stadium 2"]
+expansion_pak = "Transfer pak"
+joystick = "Keyboard"
+gb_gbc_rom = "Pokemon Crystal Version.gbc"
+video_plugin = "mupen64plus-video-glide64mk2"
+emulation_mode = "Dynamic Recompiler"

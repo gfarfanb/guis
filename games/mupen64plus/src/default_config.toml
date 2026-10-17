@@ -1,0 +1,57 @@
+# Default Mupen64Plus GUI configuration.
+# Copied into config.toml on first run; edit this file to change the defaults
+# shipped with the app. The *_home folders have no default: set them in the GUI.
+
+mupen64plus_home = ""
+n64_roms_home = ""
+gb_gbc_roms_home = ""
+n64_saves_home = ""
+n64_screenshots_home = ""
+
+[controllers]
+names = ["Input-SDL-Control1", "Input-SDL-Control2", "Input-SDL-Control3", "Input-SDL-Control4"]
+default = 1
+expansion_pak_default = "Rumble pak"
+
+[controllers.joysticks]
+names = ["Keyboard"]
+default = "Keyboard"
+
+[[controllers.expansion_paks]]
+id = "1"
+label = "None"
+
+[[controllers.expansion_paks]]
+id = "2"
+label = "Mem pak"
+
+[[controllers.expansion_paks]]
+id = "4"
+label = "Transfer pak"
+
+[[controllers.expansion_paks]]
+id = "5"
+label = "Rumble pak"
+
+[graphics]
+video_plugins = ["mupen64plus-video-glide64mk2", "mupen64plus-video-rice"]
+video_plugin_default = "mupen64plus-video-glide64mk2"
+resolution = "1024x768"
+
+[emulation]
+mode_default = "Dynamic Recompiler"
+
+[[emulation.modes]]
+id = "0"
+label = "Pure Interpreter"
+
+[[emulation.modes]]
+id = "1"
+label = "Cached Interpreter"
+
+[[emulation.modes]]
+id = "2"
+label = "Dynamic Recompiler"
+
+[parameters]
+types = ["Core", "Audio-SDL", "Video-General", "Video-Rice", "Input-SDL"]

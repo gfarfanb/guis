@@ -15,60 +15,29 @@ from pathlib import Path
 
 if getattr(sys, 'frozen', False):
     CONFIG_DIR = Path(sys.executable).resolve().parent
+    # PyInstaller extracts bundled data files under sys._MEIPASS.
+    DATA_DIR = Path(getattr(sys, '_MEIPASS', CONFIG_DIR))
 else:
     CONFIG_DIR = Path(__file__).resolve().parent
+    DATA_DIR = CONFIG_DIR
 
 CONFIG_PATH = CONFIG_DIR / 'config.toml'
+DEFAULT_CONFIG_PATH = DATA_DIR / 'default_config.toml'
 
 HEADER = [
     '# Mupen64Plus GUI configuration - generated automatically.',
     '# The *_home folders have no default; set them in the GUI.',
 ]
 
-DEFAULTS = {
-    # No defaults: the user must set these folders.
-    'mupen64plus_home': '',
-    'n64_roms_home': '',
-    'gb_gbc_roms_home': '',
-    'n64_saves_home': '',
-    'n64_screenshots_home': '',
-    'controllers': {
-        'names': [
-            'Input-SDL-Control1',
-            'Input-SDL-Control2',
-            'Input-SDL-Control3',
-            'Input-SDL-Control4',
-        ],
-        'default': 1,
-        'expansion_paks': [
-            {'id': '1', 'label': 'None'},
-            {'id': '2', 'label': 'Mem pak'},
-            {'id': '4', 'label': 'Transfer pak'},
-            {'id': '5', 'label': 'Rumble pak'},
-        ],
-        'expansion_pak_default': 'Rumble pak',
-        'joysticks': {
-            'names': ['Keyboard'],
-            'default': 'Keyboard',
-        },
-    },
-    'graphics': {
-        'video_plugins': [
-            'mupen64plus-video-glide64mk2',
-            'mupen64plus-video-rice',
-        ],
-        'video_plugin_default': 'mupen64plus-video-glide64mk2',
-        'resolution': '1024x768',
-    },
-    'emulation': {
-        'modes': [
-            {'id': '0', 'label': 'Pure Interpreter'},
-            {'id': '1', 'label': 'Cached Interpreter'},
-            {'id': '2', 'label': 'Dynamic Recompiler'},
-        ],
-        'mode_default': 'Dynamic Recompiler',
-    },
-}
+
+def load_defaults(path):
+    """Return the committed defaults document at ``path``."""
+    with open(path, 'rb') as handle:
+        return tomllib.load(handle)
+
+
+# Committed defaults, maintained in default_config.toml.
+DEFAULTS = load_defaults(DEFAULT_CONFIG_PATH)
 
 
 def load_config():
