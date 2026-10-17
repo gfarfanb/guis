@@ -12,22 +12,26 @@ from glob import glob
 from os.path import basename, isfile, join
 from sys import argv, exit
 
+from PySide6.QtCore import QEvent, Qt
 from PySide6.QtWidgets import (
     QApplication,
     QComboBox,
     QFileDialog,
     QFormLayout,
+    QGridLayout,
     QGroupBox,
     QHBoxLayout,
     QLabel,
     QLineEdit,
     QMainWindow,
     QPushButton,
-    QSpinBox,
+    QScrollArea,
     QTabWidget,
     QVBoxLayout,
     QWidget,
 )
+
+PARAMETER_TYPES = ('None', 'Core', 'Audio-SDL', 'Video-General', 'Video-Rice', 'Input-SDL')
 
 from config import load_config, save_config
 
@@ -42,6 +46,76 @@ def list_home_files(home, pattern):
     )
 
 
+class ParameterTable(QWidget):
+    """Type/Name/Value rows; Enter anywhere or Tab past the last field adds a row."""
+
+    def __init__(self):
+        super().__init__()
+
+        self.rows = []
+        self.grid = QGridLayout(self)
+        self.grid.setContentsMargins(0, 0, 0, 0)
+        self.grid.setColumnStretch(2, 1)
+        self.grid.setColumnStretch(3, 1)
+        for column, title in enumerate(('', 'Type', 'Name', 'Value')):
+            self.grid.addWidget(QLabel(title), 0, column)
+
+        self.add_row()
+
+    def add_row(self):
+        entry = {
+            'remove': QPushButton('\u2715'),
+            'type': QComboBox(),
+            'name': QLineEdit(),
+            'value': QLineEdit(),
+        }
+        entry['remove'].setFixedWidth(28)
+        entry['remove'].setToolTip('Delete row')
+        entry['remove'].clicked.connect(lambda: self.remove_row(entry))
+        entry['type'].addItems(PARAMETER_TYPES)
+        for widget in (entry['type'], entry['name'], entry['value']):
+            widget.installEventFilter(self)
+
+        self.rows.append(entry)
+        self.relayout()
+
+        return entry
+
+    def remove_row(self, entry):
+        for widget in entry.values():
+            widget.setParent(None)
+            widget.deleteLater()
+        self.rows.remove(entry)
+
+        if self.rows:
+            self.relayout()
+        else:
+            self.add_row()
+
+    def relayout(self):
+        for row, entry in enumerate(self.rows, start=1):
+            for column, key in enumerate(('remove', 'type', 'name', 'value')):
+                self.grid.addWidget(entry[key], row, column)
+
+        # Park the extra height of the scroll viewport below the rows.
+        for row in range(1, len(self.rows) + 1):
+            self.grid.setRowStretch(row, 0)
+        self.grid.setRowStretch(len(self.rows) + 1, 1)
+
+    def eventFilter(self, watched, event):
+        if event.type() == QEvent.Type.KeyPress:
+            if event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
+                self.add_row()['type'].setFocus()
+                return True
+            if (event.key() == Qt.Key.Key_Tab
+                    and event.modifiers() == Qt.KeyboardModifier.NoModifier
+                    and self.rows
+                    and watched is self.rows[-1]['value']):
+                self.add_row()['type'].setFocus()
+                return True
+        return super().eventFilter(watched, event)
+
+
 # ######################### Widgets
 class Mupen64PlusForm(QMainWindow):
 
@@ -51,21 +125,37 @@ class Mupen64PlusForm(QMainWindow):
         self.config = load_config()
         self.gb_combos = []
 
-        self.setWindowTitle('Mupen64Plus - Launch options')
+        self.setWindowTitle('Mupen64Plus - GUI')
 
         content = QWidget()
         layout = QVBoxLayout(content)
 
-        layout.addWidget(self.build_folders_group())
-        layout.addWidget(self.build_game_group())
-        layout.addWidget(self.build_controllers_group())
-        layout.addWidget(self.build_display_group())
-        layout.addStretch()
+        # Build the Games tab first: the folder rows refresh the ROM combos it owns.
+        tabs = QTabWidget()
+        tabs.addTab(self.build_tab(
+            self.build_game_group(),
+            self.build_controllers_group(),
+            self.build_emulation_tabs(),
+        ), 'Games')
+        tabs.addTab(self.build_tab(self.build_folders_group()), 'Settings')
+        layout.addWidget(tabs)
+
+        self.execute_button = QPushButton('Execute')
+        layout.addWidget(self.execute_button)
 
         self.setCentralWidget(content)
         self.resize(560, 660)
 
-    # ######################### Folders (no config defaults)
+    @staticmethod
+    def build_tab(*groups):
+        tab = QWidget()
+        layout = QVBoxLayout(tab)
+        for group in groups:
+            layout.addWidget(group)
+        layout.addStretch()
+        return tab
+
+    # ######################### Settings tab: folders (no config defaults)
     def build_folders_group(self):
         group = QGroupBox('Folders')
 
@@ -141,11 +231,6 @@ class Mupen64PlusForm(QMainWindow):
                             '(no N64 ROMs folder set)')
         form.addRow('N64 game', self.rom_combo)
 
-        self.controllers_spin = QSpinBox()
-        self.controllers_spin.setRange(1, len(self.config['controllers']['names']))
-        self.controllers_spin.setValue(self.config['controllers']['default'])
-        form.addRow('Number of controllers', self.controllers_spin)
-
         return group
 
     # ######################### controller loop
@@ -154,15 +239,50 @@ class Mupen64PlusForm(QMainWindow):
 
         layout = QVBoxLayout(group)
 
-        tabs = QTabWidget()
-        for controller_id in range(1, len(self.config['controllers']['names']) + 1):
-            tabs.addTab(
-                self.build_controller_tab(),
-                'Controller-{}'.format(controller_id))
+        self.controller_tabs = QTabWidget()
+        layout.addWidget(self.controller_tabs)
 
-        layout.addWidget(tabs)
+        row = QHBoxLayout()
+        layout.addLayout(row)
+
+        self.add_controller_button = QPushButton('Add controller')
+        self.add_controller_button.clicked.connect(self.add_controller)
+        row.addWidget(self.add_controller_button)
+
+        self.remove_controller_button = QPushButton('Remove controller')
+        self.remove_controller_button.clicked.connect(self.remove_controller)
+        row.addWidget(self.remove_controller_button)
+
+        self.add_controller()
 
         return group
+
+    def add_controller(self):
+        index = self.controller_tabs.count()
+        if index >= len(self.config['controllers']['names']):
+            return
+
+        self.controller_tabs.addTab(
+            self.build_controller_tab(),
+            'Controller-{}'.format(index + 1))
+        self.controller_tabs.setCurrentIndex(index)
+        self.update_controller_buttons()
+
+    def remove_controller(self):
+        index = self.controller_tabs.count() - 1
+        if index < 1:  # the first controller always stays
+            return
+
+        # Drop the last combo so refresh_rom_combos stops walking it.
+        self.gb_combos.pop()
+        self.controller_tabs.widget(index).deleteLater()
+        self.controller_tabs.removeTab(index)
+        self.update_controller_buttons()
+
+    def update_controller_buttons(self):
+        count = self.controller_tabs.count()
+        self.add_controller_button.setEnabled(count < len(self.config['controllers']['names']))
+        self.remove_controller_button.setEnabled(count > 1)
 
     def build_controller_tab(self):
         tab = QWidget()
@@ -197,11 +317,32 @@ class Mupen64PlusForm(QMainWindow):
 
         return tab
 
-    # ######################### Display and emulation
-    def build_display_group(self):
-        group = QGroupBox('Display and emulation')
+    # ######################### Display and emulation / Core and plugin parameters
+    def build_emulation_tabs(self):
+        tabs = QTabWidget()
+        # addTab makes the first added tab (Display and emulation) current.
+        tabs.addTab(self.build_display_page(), 'Display and emulation')
+        tabs.addTab(self.build_parameters_page(), 'Core/Plugin parameters')
+        return tabs
 
-        form = QFormLayout(group)
+    def build_parameters_page(self):
+        page = QWidget()
+
+        layout = QVBoxLayout(page)
+
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setWidget(ParameterTable())
+        # Keep the page a constant size; extra rows scroll instead of growing the window.
+        scroll.setFixedHeight(90)
+        layout.addWidget(scroll)
+
+        return page
+
+    def build_display_page(self):
+        page = QWidget()
+
+        form = QFormLayout(page)
 
         self.video_combo = QComboBox()
         self.video_combo.addItems(self.config['graphics']['video_plugins'])
@@ -219,7 +360,7 @@ class Mupen64PlusForm(QMainWindow):
         self.select_combo(self.emulation_mode_combo, self.config['emulation']['mode_default'])
         form.addRow('Emulation mode', self.emulation_mode_combo)
 
-        return group
+        return page
 
 
 def main():
