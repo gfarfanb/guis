@@ -65,13 +65,15 @@ class Mupen64PlusForm(QMainWindow):
         self.setCentralWidget(content)
         self.resize(560, 660)
 
-    # ######################### ROM folders (no config defaults)
+    # ######################### Folders (no config defaults)
     def build_folders_group(self):
-        group = QGroupBox('ROM folders')
+        group = QGroupBox('Folders')
 
         form = QFormLayout(group)
         form.addRow('N64 ROMs folder', self.build_folder_row('n64_roms_home'))
         form.addRow('GB/GBC ROMs folder', self.build_folder_row('gb_gbc_roms_home'))
+        form.addRow('N64 saves folder', self.build_folder_row('n64_saves_home'))
+        form.addRow('N64 screenshots folder', self.build_folder_row('n64_screenshots_home'))
 
         return group
 
@@ -99,7 +101,8 @@ class Mupen64PlusForm(QMainWindow):
         self.config[key] = folder
         edit.setText(folder)
         save_config(self.config)
-        self.refresh_rom_combos()
+        if key in ('n64_roms_home', 'gb_gbc_roms_home'):
+            self.refresh_rom_combos()
 
     def refresh_rom_combos(self):
         self.fill_rom_combo(self.rom_combo, self.config['n64_roms_home'], '*.?64',

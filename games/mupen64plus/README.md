@@ -84,6 +84,8 @@ the `start-mupen64plus.bat` environment variables:
 | -------------------------------------------- | -------------------------------------------------- |
 | `n64_roms_home`                              | Folder scanned for `*.?64` ROMs (no default)       |
 | `gb_gbc_roms_home`                           | Folder scanned for `*.gb*` ROMs (no default)       |
+| `n64_saves_home`                             | N64 save (SRAM) folder (no default)                |
+| `n64_screenshots_home`                       | N64 screenshot folder (no default)                 |
 | `controllers.names`                          | `--set` controller names                           |
 | `controllers.default`                        | Default number of controllers                      |
 | `controllers.expansion_paks` (`[[...]]`)     | `id`, `label` entries                              |
@@ -96,8 +98,8 @@ the `start-mupen64plus.bat` environment variables:
 | `emulation.modes` (`[[...]]`)                | `id`, `label` entries                              |
 | `emulation.mode_default`                     | Preselected emulation mode label                   |
 
-`n64_roms_home` and `gb_gbc_roms_home` have no default; pick them with the
-**Browse...** buttons in the GUI and they are saved back to `config.toml`.
+The `*_home` folders have no default; pick them with the **Browse...** buttons
+in the GUI and they are saved back to `config.toml`.
 Settings are grouped into `[controllers]`, `[graphics]` and `[emulation]`
 tables, with list-of-pairs written as `[[table]]` arrays of tables.
 

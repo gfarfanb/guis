@@ -21,13 +21,15 @@ CONFIG_PATH = CONFIG_DIR / 'config.toml'
 
 HEADER = [
     '# Mupen64Plus GUI configuration - generated automatically.',
-    '# n64_roms_home and gb_gbc_roms_home have no default; set your folders.',
+    '# The *_home folders have no default; set them in the GUI.',
 ]
 
 DEFAULTS = {
     # No defaults: the user must set these folders.
     'n64_roms_home': '',
     'gb_gbc_roms_home': '',
+    'n64_saves_home': '',
+    'n64_screenshots_home': '',
     'controllers': {
         'names': [
             'Input-SDL-Control1',
