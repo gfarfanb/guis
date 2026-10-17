@@ -26,7 +26,8 @@ dependencies = [
 build = ["PyInstaller>=6.0"]
 
 [project.gui-scripts]
-mupen64plus-gui = "mupen64plus_gui:main"
+mupen64plus-gui = "gui:main"
 
 [tool.setuptools]
-py-modules = ["mupen64plus_gui"]
+package-dir = { "" = "src" }
+py-modules = ["gui"]

@@ -65,7 +65,7 @@ python -m pip install -r requirements.txt
 Run the GUI directly from the project root:
 
 ```bash
-python mupen64plus_gui.py
+python src/gui.py
 ```
 
 Or, after activating the environment, use the installed entry point:
@@ -108,7 +108,7 @@ bash scripts/build.sh
 ```bash
 pyinstaller mupen64plus_gui.spec
 # or, without the spec file:
-pyinstaller --onefile --windowed --name mupen64plus_gui mupen64plus_gui.py
+pyinstaller --onefile --windowed --name mupen64plus_gui src/gui.py
 ```
 
 The executable is written to:
@@ -120,7 +120,8 @@ The executable is written to:
 
 ```
 games/mupen64plus/
-├── mupen64plus_gui.py       # GUI entry point
+├── src/
+│   └── gui.py               # GUI entry point
 ├── mupen64plus_gui.spec     # PyInstaller build recipe
 ├── pyproject.toml           # Project metadata and dependencies
 ├── requirements.txt         # Runtime + build dependencies

@@ -8,7 +8,7 @@
             "name": "Mupen64Plus GUI",
             "type": "debugpy",
             "request": "launch",
-            "program": "mupen64plus_gui.py"
+            "program": "src/gui.py"
         }
     ]
 }

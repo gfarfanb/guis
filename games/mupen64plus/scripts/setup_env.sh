@@ -26,5 +26,5 @@ echo '==> Installing dependencies (PySide6, PyInstaller)'
 echo
 echo 'Environment ready.'
 echo "  Activate : source .venv/bin/activate"
-echo "  Run      : python mupen64plus_gui.py"
+echo "  Run      : python src/gui.py"
 echo "  Build    : pyinstaller mupen64plus_gui.spec"

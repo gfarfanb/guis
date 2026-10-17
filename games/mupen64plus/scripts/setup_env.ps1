@@ -25,5 +25,5 @@ Write-Host '==> Installing dependencies (PySide6, PyInstaller)'
 Write-Host ''
 Write-Host 'Environment ready.'
 Write-Host "  Activate : .\.venv\Scripts\Activate.ps1"
-Write-Host "  Run      : python mupen64plus_gui.py"
+Write-Host "  Run      : python src/gui.py"
 Write-Host "  Build    : pyinstaller mupen64plus_gui.spec"

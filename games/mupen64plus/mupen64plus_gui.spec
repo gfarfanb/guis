@@ -4,13 +4,13 @@
 Build with either::
 
     pyinstaller mupen64plus_gui.spec
-    pyinstaller --onefile --windowed --name mupen64plus_gui mupen64plus_gui.py
+    pyinstaller --onefile --windowed --name mupen64plus_gui src/gui.py
 """
 
 block_cipher = None
 
 a = Analysis(
-    ['mupen64plus_gui.py'],
+    ['src/gui.py'],
     pathex=[],
     binaries=[],
     datas=[],
