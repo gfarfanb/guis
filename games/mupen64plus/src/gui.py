@@ -139,8 +139,8 @@ class Mupen64PlusForm(QMainWindow):
         form.addRow('N64 game', self.rom_combo)
 
         self.controllers_spin = QSpinBox()
-        self.controllers_spin.setRange(1, len(self.config['controller_names']))
-        self.controllers_spin.setValue(self.config['controllers_default'])
+        self.controllers_spin.setRange(1, len(self.config['controllers']['names']))
+        self.controllers_spin.setValue(self.config['controllers']['default'])
         form.addRow('Number of controllers', self.controllers_spin)
 
         return group
@@ -152,7 +152,7 @@ class Mupen64PlusForm(QMainWindow):
         layout = QVBoxLayout(group)
 
         tabs = QTabWidget()
-        for controller_id in range(1, len(self.config['controller_names']) + 1):
+        for controller_id in range(1, len(self.config['controllers']['names']) + 1):
             tabs.addTab(
                 self.build_controller_tab(),
                 'Controller-{}'.format(controller_id))
@@ -166,19 +166,19 @@ class Mupen64PlusForm(QMainWindow):
         form = QFormLayout(tab)
 
         expansion_combo = QComboBox()
-        for _pak_id, pak_name in self.config['expansion_paks']:
-            expansion_combo.addItem(pak_name, _pak_id)
-        self.select_combo(expansion_combo, self.config['expansion_pak_default'])
+        for pak in self.config['controllers']['expansion_paks']:
+            expansion_combo.addItem(pak['label'], pak['id'])
+        self.select_combo(expansion_combo, self.config['controllers']['expansion_pak_default'])
         form.addRow('Expansion pak', expansion_combo)
 
         joystick_combo = QComboBox()
-        joysticks = self.config['configured_joystick_names']
+        joysticks = self.config['controllers']['joysticks']['names']
         if joysticks:
             joystick_combo.addItems(joysticks)
         else:
             joystick_combo.addItem('(no configured joysticks)')
             joystick_combo.setEnabled(False)
-        self.select_combo(joystick_combo, self.config['configured_joystick_default'])
+        self.select_combo(joystick_combo, self.config['controllers']['joysticks']['default'])
         form.addRow('Configured joystick', joystick_combo)
 
         # Only used by the Transfer pak.
@@ -201,19 +201,19 @@ class Mupen64PlusForm(QMainWindow):
         form = QFormLayout(group)
 
         self.video_combo = QComboBox()
-        self.video_combo.addItems(self.config['gfx_video_plugins'])
-        self.select_combo(self.video_combo, self.config['gfx_video_plugin_default'])
+        self.video_combo.addItems(self.config['graphics']['video_plugins'])
+        self.select_combo(self.video_combo, self.config['graphics']['video_plugin_default'])
         form.addRow('Video plugin', self.video_combo)
 
-        resolution = self.config['resolution_default']
+        resolution = self.config['graphics']['resolution']
         self.resolution_edit = QLineEdit(resolution)
         self.resolution_edit.setPlaceholderText(resolution)
         form.addRow('Resolution', self.resolution_edit)
 
         self.emulation_mode_combo = QComboBox()
-        for _mode_id, mode_name in self.config['emulation_modes']:
-            self.emulation_mode_combo.addItem(mode_name, _mode_id)
-        self.select_combo(self.emulation_mode_combo, self.config['emulation_mode_default'])
+        for mode in self.config['emulation']['modes']:
+            self.emulation_mode_combo.addItem(mode['label'], mode['id'])
+        self.select_combo(self.emulation_mode_combo, self.config['emulation']['mode_default'])
         form.addRow('Emulation mode', self.emulation_mode_combo)
 
         return group

@@ -80,24 +80,26 @@ All settings live in a `config.toml` file that `config.py` generates on first
 run, next to the script (`src/`) or next to the built executable. It replaces
 the `start-mupen64plus.bat` environment variables:
 
-| Key                            | Purpose                                             |
-| ------------------------------ | --------------------------------------------------- |
-| `n64_roms_home`                | Folder scanned for `*.?64` ROMs (no default)        |
-| `gb_gbc_roms_home`             | Folder scanned for `*.gb*` ROMs (no default)        |
-| `controller_names`             | `--set` controller names                            |
-| `controllers_default`          | Default number of controllers                       |
-| `expansion_paks`               | `value, label` pairs                                |
-| `expansion_pak_default`        | Preselected expansion pak label                     |
-| `gfx_video_plugins`            | Video plugin names                                  |
-| `gfx_video_plugin_default`     | Preselected video plugin                            |
-| `resolution_default`           | Default display resolution                          |
-| `emulation_modes`              | `value, label` pairs                                |
-| `emulation_mode_default`       | Preselected emulation mode label                    |
-| `configured_joystick_names`    | Configured joysticks (was `N64_JOYSTICK_NAMES[i]`)  |
-| `configured_joystick_default`  | Preselected joystick (default `Keyboard`)           |
+| Key                                          | Purpose                                            |
+| -------------------------------------------- | -------------------------------------------------- |
+| `n64_roms_home`                              | Folder scanned for `*.?64` ROMs (no default)       |
+| `gb_gbc_roms_home`                           | Folder scanned for `*.gb*` ROMs (no default)       |
+| `controllers.names`                          | `--set` controller names                           |
+| `controllers.default`                        | Default number of controllers                      |
+| `controllers.expansion_paks` (`[[...]]`)     | `id`, `label` entries                              |
+| `controllers.expansion_pak_default`          | Preselected expansion pak label                    |
+| `controllers.joysticks.names`                | Configured joysticks (was `N64_JOYSTICK_NAMES[i]`) |
+| `controllers.joysticks.default`              | Preselected joystick (default `Keyboard`)          |
+| `graphics.video_plugins`                     | Video plugin names                                 |
+| `graphics.video_plugin_default`              | Preselected video plugin                           |
+| `graphics.resolution`                        | Default display resolution                         |
+| `emulation.modes` (`[[...]]`)                | `id`, `label` entries                              |
+| `emulation.mode_default`                     | Preselected emulation mode label                   |
 
 `n64_roms_home` and `gb_gbc_roms_home` have no default; pick them with the
 **Browse...** buttons in the GUI and they are saved back to `config.toml`.
+Settings are grouped into `[controllers]`, `[graphics]` and `[emulation]`
+tables, with list-of-pairs written as `[[table]]` arrays of tables.
 
 ## Build
 
