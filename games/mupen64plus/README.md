@@ -55,6 +55,11 @@ python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
 ```
 
+### VS Code env setup
+
+- Select interpreter
+    - `Ctrl+P / Python: Select Interpreter / <select_ workspace_project> / <select_env_folder>`
+
 ## Execution
 
 Run the GUI directly from the project root:
