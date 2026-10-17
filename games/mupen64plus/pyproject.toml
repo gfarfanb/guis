@@ -7,7 +7,7 @@ name = "mupen64plus-gui"
 version = "0.1.0"
 description = "PySide6 launch-options GUI for the Mupen64Plus wrapper script"
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.11"
 license = { text = "MIT" }
 authors = [{ name = "guis" }]
 keywords = ["mupen64plus", "n64", "emulator", "gui", "pyside6"]
@@ -30,4 +30,4 @@ mupen64plus-gui = "gui:main"
 
 [tool.setuptools]
 package-dir = { "" = "src" }
-py-modules = ["gui"]
+py-modules = ["gui", "config"]

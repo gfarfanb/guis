@@ -5,6 +5,9 @@ UI-only skeleton: every interactive ``set /P`` prompt found in the batch
 script is mirrored with an appropriate widget.  Nothing is wired up, no
 command line is assembled and no emulator is launched.
 
+Configuration (defaults, ROM folders, joysticks) lives in ``config.toml`` and
+is handled by ``config.py``.
+
 Original prompts mapped below:
     n64-index>            -> N64 ROM combo box
     num-controllers>      -> Number of controllers spin box
@@ -17,82 +20,27 @@ Original prompts mapped below:
 """
 
 from glob import glob
-from os import environ
 from os.path import basename, isfile, join
-from sys import argv, exit, path
+from sys import argv, exit
 
 from PySide6.QtWidgets import (
     QApplication,
     QComboBox,
+    QFileDialog,
     QFormLayout,
     QGroupBox,
+    QHBoxLayout,
     QLabel,
     QLineEdit,
     QMainWindow,
+    QPushButton,
     QSpinBox,
     QTabWidget,
     QVBoxLayout,
     QWidget,
 )
 
-
-# ######################### start-mupen64plus.bat defaults
-CONTROLLER_NAMES = [
-    'Input-SDL-Control1',
-    'Input-SDL-Control2',
-    'Input-SDL-Control3',
-    'Input-SDL-Control4',
-]
-
-CONTROLLERS_DEFAULT = 1
-
-# "set "_expansion_paks[<idx>]=<value>|<label>""
-EXPANSION_PAKS = [
-    ('1', 'None'),
-    ('2', 'Mem pak'),
-    ('4', 'Transfer pak'),
-    ('5', 'Rumble pak'),
-]
-EXPANSION_PAK_DEFAULT = 'Rumble pak'
-
-GFX_VIDEO_PLUGINS = [
-    'mupen64plus-video-glide64mk2',
-    'mupen64plus-video-rice',
-]
-GFX_VIDEO_PLUGIN_DEFAULT = GFX_VIDEO_PLUGINS[0]
-
-RESOLUTION_DEFAULT = '1024x768'
-
-# "set "_emulation_modes[<idx>]=<value>|<label>""
-EMULATION_MODES = [
-    ('0', 'Pure Interpreter'),
-    ('1', 'Cached Interpreter'),
-    ('2', 'Dynamic Recompiler'),
-]
-EMULATION_MODE_DEFAULT = 'Dynamic Recompiler'
-
-
-# ######################### Environment helpers
-def load_env_vars():
-    """Best effort import of %PYLIBSPATH%/env_vars (optional)."""
-    try:
-        path.append(environ.get('PYLIBSPATH', ''))
-        import env_vars  # pyright: ignore[reportMissingImports]
-        return env_vars
-    except Exception:
-        return None
-
-
-ENV_VARS = load_env_vars()
-
-
-def env_value(name, default=None):
-    if ENV_VARS is not None:
-        try:
-            return ENV_VARS.env_value(name)
-        except Exception:
-            return default
-    return environ.get(name, default)
+from config import load_config, save_config
 
 
 def list_home_files(home, pattern):
@@ -105,42 +53,90 @@ def list_home_files(home, pattern):
     )
 
 
-def configured_joysticks():
-    """Build the joystick list from N64_JOYSTICK_NAMES[<i>] (1..length)."""
-    joysticks = []
-    length = env_value('N64_CONFIGURED_JOYSTICK_LENGTH')
-
-    try:
-        length = int(length)
-    except (TypeError, ValueError):
-        length = 0
-
-    for index in range(1, length + 1):
-        name = env_value('N64_JOYSTICK_NAMES[{}]'.format(index))
-        if name:
-            joysticks.append(name)
-
-    return joysticks
-
-
 # ######################### Widgets
 class Mupen64PlusForm(QMainWindow):
 
     def __init__(self):
         super().__init__()
 
+        self.config = load_config()
+        self.gb_combos = []
+
         self.setWindowTitle('Mupen64Plus - Launch options')
 
         content = QWidget()
         layout = QVBoxLayout(content)
 
+        layout.addWidget(self.build_folders_group())
         layout.addWidget(self.build_game_group())
         layout.addWidget(self.build_controllers_group())
         layout.addWidget(self.build_display_group())
         layout.addStretch()
 
         self.setCentralWidget(content)
-        self.resize(560, 620)
+        self.resize(560, 660)
+
+    # ######################### ROM folders (no config defaults)
+    def build_folders_group(self):
+        group = QGroupBox('ROM folders')
+
+        form = QFormLayout(group)
+        form.addRow('N64 ROMs folder (n64_roms_home)', self.build_folder_row('n64_roms_home'))
+        form.addRow('GB/GBC ROMs folder (gb_gbc_roms_home)', self.build_folder_row('gb_gbc_roms_home'))
+
+        return group
+
+    def build_folder_row(self, key):
+        row = QWidget()
+        layout = QHBoxLayout(row)
+        layout.setContentsMargins(0, 0, 0, 0)
+
+        edit = QLineEdit(self.config[key])
+        edit.setReadOnly(True)
+
+        button = QPushButton('Browse...')
+        button.clicked.connect(lambda: self.choose_folder(key, edit))
+
+        layout.addWidget(edit)
+        layout.addWidget(button)
+
+        return row
+
+    def choose_folder(self, key, edit):
+        folder = QFileDialog.getExistingDirectory(self, 'Select folder', self.config[key])
+        if not folder:
+            return
+
+        self.config[key] = folder
+        edit.setText(folder)
+        save_config(self.config)
+        self.refresh_rom_combos()
+
+    def refresh_rom_combos(self):
+        self.fill_rom_combo(self.rom_combo, self.config['n64_roms_home'], '*.?64',
+                            '(no N64 ROMs folder set)')
+        for combo in self.gb_combos:
+            self.fill_rom_combo(combo, self.config['gb_gbc_roms_home'], '*.gb*',
+                                '(no GB/GBC ROMs folder set)')
+
+    @staticmethod
+    def fill_rom_combo(combo, home, pattern, missing_label):
+        combo.clear()
+        roms = list_home_files(home, pattern)
+
+        if roms:
+            for rom in roms:
+                combo.addItem(basename(rom), rom)
+            combo.setEnabled(True)
+        else:
+            combo.addItem(missing_label)
+            combo.setEnabled(False)
+
+    @staticmethod
+    def select_combo(combo, text):
+        index = combo.findText(str(text))
+        if index >= 0:
+            combo.setCurrentIndex(index)
 
     # ######################### n64-index> + num-controllers>
     def build_game_group(self):
@@ -148,28 +144,17 @@ class Mupen64PlusForm(QMainWindow):
 
         form = QFormLayout(group)
 
-        self.rom_combo = self.build_rom_combo()
+        self.rom_combo = QComboBox()
+        self.fill_rom_combo(self.rom_combo, self.config['n64_roms_home'], '*.?64',
+                            '(no N64 ROMs folder set)')
         form.addRow('N64 game (n64-index>)', self.rom_combo)
 
         self.controllers_spin = QSpinBox()
-        self.controllers_spin.setRange(1, len(CONTROLLER_NAMES))
-        self.controllers_spin.setValue(CONTROLLERS_DEFAULT)
+        self.controllers_spin.setRange(1, len(self.config['controller_names']))
+        self.controllers_spin.setValue(self.config['controllers_default'])
         form.addRow('Number of controllers (num-controllers>)', self.controllers_spin)
 
         return group
-
-    def build_rom_combo(self):
-        combo = QComboBox()
-        roms = list_home_files(env_value('N64_ROMS_HOME'), '*.?64')
-
-        if roms:
-            for rom in roms:
-                combo.addItem(basename(rom), rom)
-        else:
-            combo.addItem('(N64_ROMS_HOME not found)')
-            combo.setEnabled(False)
-
-        return combo
 
     # ######################### controller loop
     def build_controllers_group(self):
@@ -178,7 +163,7 @@ class Mupen64PlusForm(QMainWindow):
         layout = QVBoxLayout(group)
 
         tabs = QTabWidget()
-        for controller_id, controller_name in enumerate(CONTROLLER_NAMES, start=1):
+        for controller_id, controller_name in enumerate(self.config['controller_names'], start=1):
             tabs.addTab(
                 self.build_controller_tab(controller_id, controller_name),
                 'Controller-{}'.format(controller_id))
@@ -196,40 +181,27 @@ class Mupen64PlusForm(QMainWindow):
 
         # expansion-pak-num>
         expansion_combo = QComboBox()
-        for _pak_id, pak_name in EXPANSION_PAKS:
+        for _pak_id, pak_name in self.config['expansion_paks']:
             expansion_combo.addItem(pak_name, _pak_id)
-        default_index = expansion_combo.findText(EXPANSION_PAK_DEFAULT)
-        if default_index >= 0:
-            expansion_combo.setCurrentIndex(default_index)
+        self.select_combo(expansion_combo, self.config['expansion_pak_default'])
         form.addRow('Expansion pak (expansion-pak-num>)', expansion_combo)
 
         # joystick-config-index>
         joystick_combo = QComboBox()
-        joysticks = configured_joysticks()
+        joysticks = self.config['configured_joystick_names']
         if joysticks:
             joystick_combo.addItems(joysticks)
         else:
-            joystick_combo.addItem('(N64_JOYSTICK_NAMES not set)')
+            joystick_combo.addItem('(no configured joysticks)')
             joystick_combo.setEnabled(False)
-
-        joystick_default = env_value('N64_CONFIGURED_JOYSTICK_DEFAULT')
-        try:
-            joystick_default = int(joystick_default)
-        except (TypeError, ValueError):
-            joystick_default = None
-        if joystick_default is not None and 1 <= joystick_default <= joystick_combo.count():
-            joystick_combo.setCurrentIndex(joystick_default - 1)
+        self.select_combo(joystick_combo, self.config['configured_joystick_default'])
         form.addRow('Configured joystick (joystick-config-index>)', joystick_combo)
 
         # gc-gbc-index> -- only used by the Transfer pak
         gb_combo = QComboBox()
-        gb_roms = list_home_files(env_value('GB_GBC_ROMS_HOME'), '*.gb*')
-        if gb_roms:
-            for rom in gb_roms:
-                gb_combo.addItem(basename(rom), rom)
-        else:
-            gb_combo.addItem('(GB_GBC_ROMS_HOME not found)')
-            gb_combo.setEnabled(False)
+        self.gb_combos.append(gb_combo)
+        self.fill_rom_combo(gb_combo, self.config['gb_gbc_roms_home'], '*.gb*',
+                            '(no GB/GBC ROMs folder set)')
         form.addRow('GB/GBC game (gc-gbc-index>)', gb_combo)
 
         hint = QLabel('GB/GBC game is only used with the Transfer pak.')
@@ -245,22 +217,19 @@ class Mupen64PlusForm(QMainWindow):
         form = QFormLayout(group)
 
         self.video_combo = QComboBox()
-        self.video_combo.addItems(GFX_VIDEO_PLUGINS)
-        video_default = self.video_combo.findText(GFX_VIDEO_PLUGIN_DEFAULT)
-        if video_default >= 0:
-            self.video_combo.setCurrentIndex(video_default)
+        self.video_combo.addItems(self.config['gfx_video_plugins'])
+        self.select_combo(self.video_combo, self.config['gfx_video_plugin_default'])
         form.addRow('Video plugin (gfx-video-index>)', self.video_combo)
 
-        self.resolution_edit = QLineEdit(RESOLUTION_DEFAULT)
-        self.resolution_edit.setPlaceholderText(RESOLUTION_DEFAULT)
+        resolution = self.config['resolution_default']
+        self.resolution_edit = QLineEdit(resolution)
+        self.resolution_edit.setPlaceholderText(resolution)
         form.addRow('Resolution (resolution>)', self.resolution_edit)
 
         self.emumode_combo = QComboBox()
-        for _mode_id, mode_name in EMULATION_MODES:
+        for _mode_id, mode_name in self.config['emulation_modes']:
             self.emumode_combo.addItem(mode_name, _mode_id)
-        emumode_default = self.emumode_combo.findText(EMULATION_MODE_DEFAULT)
-        if emumode_default >= 0:
-            self.emumode_combo.setCurrentIndex(emumode_default)
+        self.select_combo(self.emumode_combo, self.config['emulation_mode_default'])
         form.addRow('Emulation mode (emumode-index>)', self.emumode_combo)
 
         return group

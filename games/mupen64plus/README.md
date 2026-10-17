@@ -20,7 +20,7 @@ with an appropriate widget:
 
 ## Requirements
 
-- Python 3.9+
+- Python 3.11+
 - [PySide6](https://pypi.org/project/PySide6/) — GUI toolkit
 - [PyInstaller](https://pypi.org/project/pyinstaller/) — standalone builds
 
@@ -74,18 +74,30 @@ Or, after activating the environment, use the installed entry point:
 mupen64plus-gui
 ```
 
-### Optional environment variables
+## Configuration
 
-The form reads these variables when they are present:
+All settings live in a `config.toml` file that `config.py` generates on first
+run, next to the script (`src/`) or next to the built executable. It replaces
+the `start-mupen64plus.bat` environment variables:
 
-| Variable                        | Purpose                                  |
-| ------------------------------- | ---------------------------------------- |
-| `PYLIBSPATH`                    | Folder containing the shared `env_vars`  |
-| `N64_ROMS_HOME`                 | Folder scanned for `*.?64` ROMs          |
-| `GB_GBC_ROMS_HOME`              | Folder scanned for `*.gb*` ROMs          |
-| `N64_CONFIGURED_JOYSTICK_LENGTH`| Number of configured joysticks           |
-| `N64_JOYSTICK_NAMES[i]`         | Name of configured joystick `i`          |
-| `N64_CONFIGURED_JOYSTICK_DEFAULT` | Preselected joystick index             |
+| Key                            | Purpose                                             |
+| ------------------------------ | --------------------------------------------------- |
+| `n64_roms_home`                | Folder scanned for `*.?64` ROMs (no default)        |
+| `gb_gbc_roms_home`             | Folder scanned for `*.gb*` ROMs (no default)        |
+| `controller_names`             | `--set` controller names                            |
+| `controllers_default`          | Default number of controllers                       |
+| `expansion_paks`               | `value, label` pairs                                |
+| `expansion_pak_default`        | Preselected expansion pak label                     |
+| `gfx_video_plugins`            | Video plugin names                                  |
+| `gfx_video_plugin_default`     | Preselected video plugin                            |
+| `resolution_default`           | Default display resolution                          |
+| `emulation_modes`              | `value, label` pairs                                |
+| `emulation_mode_default`       | Preselected emulation mode label                    |
+| `configured_joystick_names`    | Configured joysticks (was `N64_JOYSTICK_NAMES[i]`)  |
+| `configured_joystick_default`  | Preselected joystick (default `Keyboard`)           |
+
+`n64_roms_home` and `gb_gbc_roms_home` have no default; pick them with the
+**Browse...** buttons in the GUI and they are saved back to `config.toml`.
 
 ## Build
 
@@ -121,7 +133,9 @@ The executable is written to:
 ```
 games/mupen64plus/
 ├── src/
-│   └── gui.py               # GUI entry point
+│   ├── gui.py               # GUI entry point
+│   └── config.py            # config.toml handling
+├── config.toml              # generated on first run (git-ignored)
 ├── mupen64plus_gui.spec     # PyInstaller build recipe
 ├── pyproject.toml           # Project metadata and dependencies
 ├── requirements.txt         # Runtime + build dependencies

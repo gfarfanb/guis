@@ -11,10 +11,10 @@ block_cipher = None
 
 a = Analysis(
     ['src/gui.py'],
-    pathex=[],
+    pathex=['src'],
     binaries=[],
     datas=[],
-    hiddenimports=[],
+    hiddenimports=['config'],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
