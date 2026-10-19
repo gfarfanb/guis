@@ -8,6 +8,7 @@ gb_gbc_roms_home = ""
 gb_gbc_saves_home = ""
 n64_saves_home = ""
 n64_screenshots_home = ""
+last_n64_rom = ""
 
 [controllers]
 names = ["Input-SDL-Control1", "Input-SDL-Control2", "Input-SDL-Control3", "Input-SDL-Control4"]

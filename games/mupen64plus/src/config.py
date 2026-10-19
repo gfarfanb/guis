@@ -24,6 +24,9 @@ else:
 CONFIG_PATH = CONFIG_DIR / 'config.toml'
 DEFAULT_CONFIG_PATH = DATA_DIR / 'default_config.toml'
 
+# The icon lives in img/ at the repository root; the frozen build bundles it there.
+ICON_PATH = (DATA_DIR if getattr(sys, 'frozen', False) else CONFIG_DIR.parent) / 'img' / 'Mupen64Plus.png'
+
 HEADER = [
     '# Mupen64Plus GUI configuration - generated automatically.',
     '# The *_home folders have no default; set them in the GUI.',

@@ -16,6 +16,7 @@ a = Analysis(
     datas=[
         ('src/default_config.toml', '.'),
         ('src/default_profiles.toml', '.'),
+        ('img/Mupen64Plus.png', 'img'),
     ],
     hiddenimports=['config', 'profile', 'mupen'],
     hookspath=[],

@@ -14,7 +14,7 @@ from os.path import basename, isfile, join
 from sys import argv, exit
 
 from PySide6.QtCore import QEvent, Qt, QUrl
-from PySide6.QtGui import QDesktopServices
+from PySide6.QtGui import QDesktopServices, QIcon
 from PySide6.QtWidgets import (
     QApplication,
     QComboBox,
@@ -39,7 +39,7 @@ PARAMETER_NONE = 'None'
 CORE_PARAMETERS_URL = 'https://mupen64plus.org/wiki/index.php?title=Mupen64Plus_Core_Parameters'
 PLUGIN_PARAMETERS_URL = 'https://mupen64plus.org/wiki/index.php?title=Mupen64Plus_Plugin_Parameters'
 
-from config import load_config, save_config
+from config import ICON_PATH, load_config, save_config
 from mupen import Mupen64Plus
 from profile import Profile
 
@@ -164,6 +164,7 @@ class Mupen64PlusForm(QMainWindow):
         self.controller_rows = []
 
         self.setWindowTitle('Mupen64Plus - GUI')
+        self.setWindowIcon(QIcon(str(ICON_PATH)))
 
         content = QWidget()
         layout = QVBoxLayout(content)
@@ -184,6 +185,10 @@ class Mupen64PlusForm(QMainWindow):
         layout.addWidget(self.execute_button)
 
         self.setCentralWidget(content)
+
+        index = self.rom_combo.findData(self.config['last_n64_rom'])
+        if index >= 0:
+            self.rom_combo.setCurrentIndex(index)
 
         self.rom_combo.currentIndexChanged.connect(self.apply_rom_parameters)
         self.apply_rom_parameters()
@@ -282,6 +287,9 @@ class Mupen64PlusForm(QMainWindow):
             return
         self.save_rom_parameters()
         self.current_rom = rom
+        if rom:
+            self.config['last_n64_rom'] = rom
+            save_config(self.config)
         self.parameter_table.set_parameters(self.profile.for_rom(rom))
         self.apply_rom_options(rom)
 
