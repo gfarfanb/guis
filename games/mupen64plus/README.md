@@ -1,13 +1,13 @@
 # mupen64plus-gui
 
-A PySide6 launch-options form for the `scripts/games/.libs/start-mupen64plus.bat`
+A PySide6 launch-options form for the archived `.archived/start-mupen64plus.bat`
 wrapper. Every interactive `set /P` prompt of the batch script is mirrored
 with an appropriate widget:
 
 | Batch prompt           | Widget                        |
 | ---------------------- | ----------------------------- |
 | `n64-index>`           | N64 ROM combo box             |
-| `num-controllers>`     | Number of controllers spin box |
+| `num-controllers>`     | Per-controller tabs (Add/Remove controller buttons) |
 | `expansion-pak-num>`   | Expansion pak combo box       |
 | `joystick-config-index>` | Configured joystick combo box |
 | `gc-gbc-index>`        | GB/GBC ROM combo box          |
@@ -91,6 +91,7 @@ environment variables:
 | `gb_gbc_saves_home`                          | GB/GBC transfer-pak save folder (no default)       |
 | `n64_saves_home`                             | N64 save (SRAM) folder (no default)                |
 | `n64_screenshots_home`                       | N64 screenshot folder (no default)                 |
+| `last_n64_rom`                               | Last-played ROM, preselected on startup            |
 | `controllers.names`                          | `--set` controller names                           |
 | `controllers.default`                        | Default number of controllers                      |
 | `controllers.expansion_paks` (`[[...]]`)     | `id`, `label` entries                              |
@@ -179,14 +180,18 @@ games/mupen64plus/
 │   ├── config.py            # config.toml handling
 │   ├── profile.py           # profiles.toml handling (per-ROM parameters)
 │   ├── default_config.toml  # committed default config
-│   └── default_profiles.toml # committed default ROM profiles
-├── config.toml              # generated on first run (git-ignored)
-├── profiles.toml            # generated on first run (git-ignored)
+│   ├── default_profiles.toml # committed default ROM profiles
+│   ├── config.toml          # generated on first run (git-ignored)
+│   └── profiles.toml        # generated on first run (git-ignored)
+├── img/
+│   └── Mupen64Plus.png      # window / executable icon
 ├── mupen64plus_gui.spec     # PyInstaller build recipe
 ├── pyproject.toml           # Project metadata and dependencies
 ├── requirements.txt         # Runtime + build dependencies
 ├── README.md
 ├── .gitignore
+├── .archived/
+│   └── start-mupen64plus.bat # original batch wrapper (reference)
 └── scripts/
     ├── setup_env.ps1 / .sh  # Create venv + install dependencies
     └── build.ps1 / .sh      # PyInstaller build
